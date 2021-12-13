@@ -8,7 +8,7 @@ fn main() {
         std::io::stdin().read_line(&mut s).ok();
         match expr_eval(&s) {
             Ok(val) => println!("ok:{}", val),
-            _ => println!("構文エラー")
+            _ => println!("構文エラー"),
         }
     }
 }

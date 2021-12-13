@@ -1,9 +1,9 @@
 use super::ast::*;
-use nom::character::complete::{digit1, char};
-use nom::IResult;
 use nom::branch::alt;
+use nom::character::complete::{char, digit1};
 use nom::combinator::{map, opt};
 use nom::sequence::tuple;
+use nom::IResult;
 
 #[test]
 fn digit1_test() {
@@ -14,32 +14,19 @@ fn digit1_test() {
     assert_eq!("abc", no_used);
 }
 
-///式のパーサ
+/// 式のパーサ
 pub fn expr_parser(s: &str) -> IResult<&str, Expr> {
-    //+-記号をOpKind型にパースするパーサ
-    let op_kind_parser =
-        map(
-            alt((char('+'), char('-'))),
-            |op_char|
-                match op_char {
-                    '+' => OpKind::Add,
-                    '-' => OpKind::Sub,
-                    _ => panic!("error!")
-                },
-        );
+    // +-記号をOpKind型にパースするパーサ
+    let op_kind_parser = map(alt((char('+'), char('-'))), |op_char| match op_char {
+        '+' => OpKind::Add,
+        '-' => OpKind::Sub,
+        _ => panic!("error!"),
+    });
 
-    //足し算、引き算のパーサ
-    let binary_parser = tuple((
-        term_parser,
-        opt(
-            tuple((
-                op_kind_parser,
-                expr_parser
-            ))
-        )
-    ));
+    // 足し算、引き算のパーサ
+    let binary_parser = tuple((term_parser, opt(tuple((op_kind_parser, expr_parser)))));
 
-    //足し算、引き算のパーサのパースされた値をmapで調整
+    // 足し算、引き算のパーサのパースされた値をmapで調整
     map(binary_parser, |(head_expr, tail_expr_opt)| {
         if let Option::Some((op_kind, tail_expr)) = tail_expr_opt {
             Expr::BinaryOp(Box::new(BinaryOp::new(op_kind, head_expr, tail_expr)))
@@ -49,33 +36,19 @@ pub fn expr_parser(s: &str) -> IResult<&str, Expr> {
     })(s)
 }
 
-///項のパーサ
+/// 項のパーサ
 pub fn term_parser(s: &str) -> IResult<&str, Expr> {
+    // */記号をOpKind型にパースするパーサ
+    let op_kind_parser = map(alt((char('*'), char('/'))), |op_char| match op_char {
+        '*' => OpKind::Mul,
+        '/' => OpKind::Div,
+        _ => panic!("error!"),
+    });
 
-    //*/記号をOpKind型にパースするパーサ
-    let op_kind_parser =
-        map(
-            alt((char('*'), char('/'))),
-            |op_char|
-                match op_char {
-                    '*' => OpKind::Mul,
-                    '/' => OpKind::Div,
-                    _ => panic!("error!")
-                },
-        );
+    // 掛け算、割り算のパーサ
+    let binary_parser = tuple((factor_parser, opt(tuple((op_kind_parser, term_parser)))));
 
-    //掛け算、割り算のパーサ
-    let binary_parser = tuple((
-        factor_parser,
-        opt(
-            tuple((
-                op_kind_parser,
-                term_parser
-            ))
-        )
-    ));
-
-    //掛け算、割り算のパーサのパースされた値をmapで調整
+    // 掛け算、割り算のパーサのパースされた値をmapで調整
     map(binary_parser, |(head_expr, tail_expr_opt)| {
         if let Option::Some((op_kind, tail_expr)) = tail_expr_opt {
             Expr::BinaryOp(Box::new(BinaryOp::new(op_kind, head_expr, tail_expr)))
@@ -89,28 +62,26 @@ pub fn term_parser(s: &str) -> IResult<&str, Expr> {
 fn term_parser_test() {
     let (_, actual) = term_parser("4*2/1").unwrap();
 
-    let temp = Expr::BinaryOp(Box::new(
-        BinaryOp::new(
-            OpKind::Div,
-            Expr::ConstantVal(ConstantVal::new(2)),
-            Expr::ConstantVal(ConstantVal::new(1)),
-        )
-    ));
-    let expect = Expr::BinaryOp(Box::new(
-        BinaryOp::new(
-            OpKind::Mul,
-            Expr::ConstantVal(ConstantVal::new(4)),
-            temp,
-        )
-    ));
+    let temp = Expr::BinaryOp(Box::new(BinaryOp::new(
+        OpKind::Div,
+        Expr::ConstantVal(ConstantVal::new(2)),
+        Expr::ConstantVal(ConstantVal::new(1)),
+    )));
+    let expect = Expr::BinaryOp(Box::new(BinaryOp::new(
+        OpKind::Mul,
+        Expr::ConstantVal(ConstantVal::new(4)),
+        temp,
+    )));
     assert_eq!(actual, expect);
 }
 
-///因子のパーサ
+/// 因子のパーサ
 pub fn factor_parser(s: &str) -> IResult<&str, Expr> {
     alt((
-        map(constant_val_parser, |constant_val| Expr::ConstantVal(constant_val)),
-        paren_expr_parser
+        map(constant_val_parser, |constant_val| {
+            Expr::ConstantVal(constant_val)
+        }),
+        paren_expr_parser,
     ))(s)
 }
 
@@ -125,7 +96,7 @@ fn factor_parser_test() {
     assert_eq!(actual, expect);
 }
 
-///丸括弧で囲まれた式のパーサ
+/// 丸括弧で囲まれた式のパーサ
 pub fn paren_expr_parser(s: &str) -> IResult<&str, Expr> {
     let (no_used, _) = char('(')(s)?;
     let (no_used, expr) = expr_parser(no_used)?;
@@ -140,7 +111,7 @@ fn paren_expr_parser_test() {
     assert_eq!(actual, expect);
 }
 
-///定数のパーサ
+/// 定数のパーサ
 pub fn constant_val_parser(s: &str) -> IResult<&str, ConstantVal> {
     use std::str::FromStr;
 
